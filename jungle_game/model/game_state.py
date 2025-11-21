@@ -1,6 +1,6 @@
 from .position import Position
 from .board import Board, DEN_P1, DEN_P2
-
+import json
 
 class GameState:
     def __init__(self):
@@ -168,16 +168,21 @@ class GameState:
     def get_current_player(self):
         return self.current_player
 
-    # -----------------------------
-    # SERIALIZATION (MODEL ONLY)
-    # -----------------------------
-    def to_dict(self):
-        """
-        Convert the whole game state into a serializable dictionary.
-        This is ONLY the data structure — not file I/O.
-        Yera will use this to save .jungle files.
-        """
+    #Save into .jungle format
+    def save_game(self, filename):
+        data = self.to_dict()
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=4)
 
+    #Save into .record format
+    def save_record(self, filename):
+        with open(filename, "w") as f:
+            for fr, to, cap, pl in self.move_history:
+                r1, c1 = fr.get_pos()
+                r2, c2 = to.get_pos()
+                f.write(f"{r1} {c1} {r2} {c2}\n")
+
+    def to_dict(self):
         pieces_data = []
 
         for row in range(9):
@@ -202,14 +207,13 @@ class GameState:
             "pieces": pieces_data
         }
 
+    # Load from .jungle format
     @classmethod
-    def from_dict(cls, data):
-        """
-        Reconstruct a GameState from a dictionary created by to_dict().
-        This does NOT include file I/O — only the logic.
-        """
-
+    def load_game(cls, filename):
         state = cls()  # create a fresh game
+
+        with open(filename, 'r') as f:
+            data = json.load(f)
 
         state.current_player = data["current_player"]
         state.undo_used = {
@@ -259,7 +263,18 @@ class GameState:
                 state.board.pieces[row][col] = piece_obj
 
         return state
-
+    
+    @classmethod
+    def replay_history(cls, filename):  
+        moves = []
+        with open(filename, "r") as f:
+            for line in f:
+                r1, c1, r2, c2 = map(int, line.strip().split())
+                moves.append((r1, c1, r2, c2))
+        return moves
+        
+        
+        
 
 
 

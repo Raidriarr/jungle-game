@@ -1,5 +1,6 @@
 from jungle_game.model.game_state import GameState
 from jungle_game.model.position import Position
+import time
 
 
 class GameController:
@@ -54,7 +55,6 @@ class GameController:
         return self.game_state.make_move(from_pos, to_pos)
 
     def undo(self):
-
         # No moves made → nothing to undo
         if not self.game_state.move_history:
             return False
@@ -67,6 +67,23 @@ class GameController:
             return self.game_state.undo_last_move()
 
         return False
+
+    def save_game(self, filename):
+        if filename.endswith(".jungle"):
+            self.game_state.save_game(filename)
+        else:
+            self.game_state.save_record(filename)
+
+    def save_record(self, filename):
+        self.game_state.save_record(filename)
+
+    def load_game(self, filename):
+        self.game_state = GameState.load_game(filename)
+
+    def replay_game(self, filename):
+        self.game_state = GameState()
+        return GameState.replay_history(filename)
+
 
     #Game State Info
     def is_game_over(self):

@@ -1,7 +1,10 @@
 from jungle_game.controller.game_controller import GameController
 import tkinter as tk
+from tkinter import filedialog
+
 
 class JungleGameApp (tk.Tk):
+    #GUI itself
     def __init__(self, screenName = None, baseName = None, className = "Tk", useTk = True, sync = False, use = None) -> None:
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
@@ -84,18 +87,28 @@ class JungleGameApp (tk.Tk):
 
         # Control buttons
         buttons_frame = tk.Frame(self)
-        buttons_frame.pack(pady=(0, 10))
+        buttons_frame.pack(pady=(0, 25))
+
+        save_button = tk.Button(buttons_frame, text="Save", command=self.save_game)
+        save_button.grid(row=0, column=0, padx=5)
+        
+        load_button = tk.Button(buttons_frame, text="Load", command=self.load_game)
+        load_button.grid(row=0, column=1, padx=5)
+
+        replay_button = tk.Button(buttons_frame, text="Replay", command=self.replay_moves)
+        replay_button.grid(row=0, column=2, padx=5)
 
         undo_button = tk.Button(buttons_frame, text="Undo", command=self.on_undo)
-        undo_button.grid(row=0, column=0, padx=5)
+        undo_button.grid(row=0, column=3, padx=5)
 
         quit_button = tk.Button(buttons_frame, text="Quit", command=self.destroy)
-        quit_button.grid(row=0, column=1, padx=5)
+        quit_button.grid(row=0, column=4, padx=5)
 
         #First board refresh to Initialize display
         self.refresh_board()
 
-    #Event Handler
+###################################################################################
+    #Events Handler
     def on_cell_click(self, row, col):
         if self.controller.is_game_over():
             return
@@ -109,6 +122,7 @@ class JungleGameApp (tk.Tk):
                 self.status_label.config(text=f"Selected {piece_name.capitalize()} at ({row}, {col})")
             else:
                 self.status_label.config(text="Cannot select this piece.")
+                self.after(2000, self.restore_player_turn)
         else:
             from_row, from_col = self.selected_cell
             # Unselect
@@ -136,7 +150,59 @@ class JungleGameApp (tk.Tk):
             self.selected_cell = None
             self.refresh_board()
 
-    #Refresh Board Display
+    def save_game(self):
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".jungle",
+            filetypes=[("Jungle Game Files", "*.jungle"), ("Records", "*.record")],
+        )
+        if not filename:
+            return 
+        
+        self.controller.save_game(filename)
+        self.status_label.config(text=f"Game saved to {filename}")
+        self.after(2000, self.restore_player_turn)
+
+    def open_file_dialog(self, type):
+        filename = filedialog.askopenfilename(
+            title="Open Jungle Game File",
+            filetypes=[type ]
+        )
+        return filename
+
+    def load_game(self, type=("Jungle Game Files", "*.jungle")):
+        filename = self.open_file_dialog(type)
+        if not filename:
+            self.status_label.config(text=f"Failed to load, Try again.")
+            self.after(2000, self.restore_player_turn)
+            return
+            
+        self.controller.load_game(filename)
+        self.selected_cell = None
+        self.refresh_board()
+        self.status_label.config(text=f"Loaded game from {filename}")
+        self.after(2000, self.restore_player_turn)
+    
+    def replay_moves(self, type=("Records", "*.record")):
+        filename = self.open_file_dialog(type)
+        if not filename:
+            self.status_label.config(text=f"Failed to load, Try again.")
+            self.after(2000, self.restore_player_turn)
+            return
+            
+        self.status_label.config(text=f"Replaing from {filename}")
+        self.after(1000)
+        moves= self.controller.replay_game(filename)
+        
+        for r1, c1, r2, c2 in moves:
+            self.after (1000)
+            self.controller.make_move(r1, c1, r2, c2)
+            self.refresh_board()
+
+        self.selected_cell = None
+        self.refresh_board()
+
+######################################
+    #Refreshing Board Display/GUI
     def refresh_board(self)-> None:
         rows, cols = self.rows, self.cols
         for r in range(rows):
@@ -171,10 +237,15 @@ class JungleGameApp (tk.Tk):
             else:
                 text = "Game over"
         else:
-            player = self.controller.get_current_player()
-            text = f"Player {1 if player == 1 else 2}'s turn"
+            self.restore_player_turn()
+            return
 
         self.status_label.config(text=text)
+
+    def restore_player_turn(self):
+        player = self.controller.get_current_player()
+        self.status_label.config(text=f"Player {1 if player == 1 else 2}'s turn")
+        return
 
 
 def main() -> None:

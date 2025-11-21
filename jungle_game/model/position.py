@@ -7,3 +7,6 @@ class Position:
         r = abs(self.row - other.row)
         c = abs(self.col - other.col)
         return r + c == 1
+    
+    def get_pos(self):
+        return self.row, self.col

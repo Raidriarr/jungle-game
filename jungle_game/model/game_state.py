@@ -1,108 +1,172 @@
+from .position import Position
+from .board import Board, DEN_P1, DEN_P2
+
+
 class GameState:
     def __init__(self):
-        """
-        Create a new game:
-        - set up the board
-        - set starting player
-        - prepare move history and undo limits
-        - mark game as not over
-        """
-        # self.board = Board()
-        # self.current_player = 1   # 1 for Player 1, -1 for Player 2
-        # self.move_history = []    # list of moves (from, to, captured piece, etc.)
-        # self.undo_used = {1: 0, -1: 0}   # how many undos each player used
-        # self.game_over = False
-        # self.winner = None        # 1, -1, or None
-        pass
+        self.board = Board()
+        self.current_player = 1   # 1 for Player 1, -1 for Player 2
+        self.move_history = []    # list of moves (from, to, captured piece, etc.)
+        self.undo_used = {1: 0, -1: 0}   # how many undos each player used
+        self.game_over = False
+        self.winner = None        # 1, -1, or None
 
     def make_move(self, from_pos, to_pos):
-        """
-        Try to make a move for current_player from from_pos to to_pos.
-
-        Steps (later in logic):
-        - get the piece at from_pos from the board
-        - ask board.is_legal_move(piece, to_pos, current_player)
-        - if not legal: return False (or raise)
-        - if legal:
-            - call board.move_piece(from_pos, to_pos) and get captured_piece
-            - store a record in self.move_history (from, to, captured_piece, maybe previous den/trap info)
-            - check if the move ends the game (entering den or capturing last piece)
-            - if game ended: set self.game_over and self.winner
-            - else: switch player
-        """
-        pass
+        if self.game_over:
+            return False
+        piece = self.board.get_piece(from_pos)
+        if piece is None:
+            return False
+        if piece.player != self.current_player:
+            return False
+        if not self.board.is_legal_move(piece, to_pos, self.current_player):
+            return False
+        captured_piece = self.board.get_piece(to_pos)
+        self.board.move_piece(from_pos, to_pos)
+        piece.position = to_pos
+        self.move_history.append((from_pos, to_pos, captured_piece, self.current_player))
+        dest_tile = self.board.get_tile_type(to_pos)
+        if self.current_player == 1 and dest_tile == DEN_P2:
+            self.game_over = True
+            self.winner = 1
+            return True
+        if self.current_player == -1 and dest_tile == DEN_P1:
+            self.game_over = True
+            self.winner = -1
+            return True
+        opponent = -self.current_player
+        opponent_has_piece = False
+        for row in range(9):
+            for col in range(7):
+                p = self.board.pieces[row][col]
+                if p is not None and p.player == opponent:
+                    opponent_has_piece = True
+                    break
+            if opponent_has_piece:
+                break
+        if not opponent_has_piece:
+            self.game_over = True
+            self.winner = self.current_player
+            return True
+        self.switch_player()
+        return True
 
     def switch_player(self):
-        """
-        Switch current_player between 1 and -1.
-        Example: self.current_player = -self.current_player
-        """
-        pass
+        self.current_player *= -1
 
     def is_game_over(self):
-        """
-        Return True if the game has ended.
-        You can either:
-        - just return self.game_over, or
-        - recompute (e.g. check if a den is occupied or a player has no pieces left).
-        """
-        pass
+        return self.game_over
 
     def get_winner(self):
-        """
-        Return the winner:
-        - 1  if Player 1 wins
-        - -1 if Player 2 wins
-        - None if there is no winner yet or it's a draw (if you allow draws).
-        """
-        pass
+        return self.winner
 
     def can_undo(self, player):
-        """
-        Return True if the given player is allowed to undo a move.
-        Typical rules:
-        - each player has at most 3 undos
-        - cannot undo if there is no history
-        - maybe only undo your own last move (depends on assignment spec)
-        """
-        pass
+        if self.game_over:
+            return False
+
+        if not self.move_history:
+            return False
+
+            # Check who made the last move
+        _, _, _, last_move_player = self.move_history[-1]
+
+        if last_move_player != player:
+            return False
+
+        if self.undo_used[player] >= 3:
+            return False
+
+        return True
 
     def undo_last_move(self):
-        """
-        Undo the last move.
+        if not self.move_history:
+            return False  # nothing to undo
 
-        Steps (later in logic):
-        - check if move_history is not empty
-        - pop the last move record (from_pos, to_pos, captured_piece, player, etc.)
-        - move the piece back from to_pos to from_pos on the board
-        - if captured_piece is not None:
-            - put the captured piece back on the board
-            - mark captured_piece.alive = True (if you use that flag)
-        - update self.current_player back to the player who made that move
-        - increase undo_used for that player
-        """
-        pass
+            # Extract last recorded move
+        from_pos, to_pos, captured_piece, player = self.move_history.pop()
+
+        # We will undo the move made by 'player'
+        moved_piece = self.board.get_piece(to_pos)
+
+        if moved_piece is None:
+            # Should never happen if code is correct
+            return False
+
+        # 1. Move the piece back to original square
+        self.board.pieces[to_pos.row][to_pos.col] = None
+        self.board.pieces[from_pos.row][from_pos.col] = moved_piece
+        moved_piece.position = from_pos
+
+        # 2. Restore captured piece (if any)
+        if captured_piece is not None:
+            self.board.pieces[to_pos.row][to_pos.col] = captured_piece
+            captured_piece.alive = True
+            captured_piece.position = to_pos
+
+        # 3. Switch current player BACK to the one who made the undone move
+        self.current_player = player
+
+        # 4. Mark undo used
+        self.undo_used[player] += 1
+
+        # 5. If the game was previously over, undo resets it
+        self.game_over = False
+        self.winner = None
+
+        return True
 
     def get_legal_moves(self, player):
-        """
-        Return a list of all legal moves for the given player.
+        moves = []
 
-        Typical shape of a move: (from_pos, to_pos)
+        # Directions for orthogonal movement
+        DIRECTIONS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
-        Steps (later in logic):
-        - loop over all board squares
-        - find pieces that belong to 'player'
-        - for each piece, try all 4 directions (and maybe jumps)
-        - call board.is_legal_move(piece, target_pos, player)
-        - if True, add to the list
-        """
-        pass
+        for row in range(9):
+            for col in range(7):
+                piece = self.board.pieces[row][col]
 
+                if piece is None:
+                    continue
+                if piece.player != player:
+                    continue
+
+                from_pos = piece.position
+
+                # try all 4 directions
+                for dr, dc in DIRECTIONS:
+                    to_row = row + dr
+                    to_col = col + dc
+                    target_pos = Position(to_row, to_col)
+
+                    if not self.board.is_inside(target_pos):
+                        continue
+
+                    if self.board.is_legal_move(piece, target_pos, player):
+                        moves.append((from_pos, target_pos))
+
+                # also try possible jump directions (lion/tiger)
+                # Jumps are far, but is_legal_move handles legality.
+                # So test squares in same row/col.
+                if piece.animal_type.can_jump_river():
+                    # same row, different columns
+                    for col2 in range(7):
+                        if col2 == col:
+                            continue
+                        target_pos = Position(row, col2)
+                        if self.board.is_legal_move(piece, target_pos, player):
+                            moves.append((from_pos, target_pos))
+
+                    # same column, different rows
+                    for row2 in range(9):
+                        if row2 == row:
+                            continue
+                        target_pos = Position(row2, col)
+                        if self.board.is_legal_move(piece, target_pos, player):
+                            moves.append((from_pos, target_pos))
+
+        return moves
     def get_current_player(self):
-        """
-        Return the player whose turn it is (1 or -1).
-        """
-        pass
+        return self.current_player
 
 
 

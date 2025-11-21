@@ -93,10 +93,6 @@ class Board:
         return captured_piece
 
     def is_legal_move(self, piece, target_pos, current_player):
-        """
-        Return True if 'piece' (belonging to current_player) can legally move to target_pos.
-        This includes movement rules, water rules, traps, dens, and capture rules.
-        """
         if piece is None:
             return False
 
@@ -212,11 +208,6 @@ class Board:
         return attacker.animal_type.rank >= defender.animal_type.rank
 
     def can_jump_river(self, piece, from_pos, to_pos):
-        """
-        Return True if the piece can legally JUMP over the river.
-        This checks ONLY the jump mechanics, not capturing rules.
-        """
-
         # Only lion or tiger can jump
         if not piece.animal_type.can_jump_river():
             return False

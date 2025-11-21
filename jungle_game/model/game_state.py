@@ -1,35 +1,177 @@
+from .position import Position
+from .board import Board, DEN_P1, DEN_P2
+
+
 class GameState:
-    """
-    TEMPORARY dummy implementation so that controller + GUI can work.
-    Trofim will later replace the internals but KEEP the same method names.
-    """
+    def __init__(self):
+        self.board = Board()
+        self.current_player = 1   # 1 for Player 1, -1 for Player 2
+        self.move_history = []    # list of moves (from, to, captured piece, etc.)
+        self.undo_used = {1: 0, -1: 0}   # how many undos each player used
+        self.game_over = False
+        self.winner = None        # 1, -1, or None
 
-    def __init__(self) -> None:
-        # 9 rows x 7 columns simple board filled with dots
-        self.rows = 9
-        self.cols = 7
-        self.board = [["." for _ in range(self.cols)] for _ in range(self.rows)]
+    def make_move(self, from_pos, to_pos):
+        if self.game_over:
+            return False
+        piece = self.board.get_piece(from_pos)
+        if piece is None:
+            return False
+        if piece.player != self.current_player:
+            return False
+        if not self.board.is_legal_move(piece, to_pos, self.current_player):
+            return False
+        captured_piece = self.board.get_piece(to_pos)
+        self.board.move_piece(from_pos, to_pos)
+        piece.position = to_pos
+        self.move_history.append((from_pos, to_pos, captured_piece, self.current_player))
+        dest_tile = self.board.get_tile_type(to_pos)
+        if self.current_player == 1 and dest_tile == DEN_P2:
+            self.game_over = True
+            self.winner = 1
+            return True
+        if self.current_player == -1 and dest_tile == DEN_P1:
+            self.game_over = True
+            self.winner = -1
+            return True
+        opponent = -self.current_player
+        opponent_has_piece = False
+        for row in range(9):
+            for col in range(7):
+                p = self.board.pieces[row][col]
+                if p is not None and p.player == opponent:
+                    opponent_has_piece = True
+                    break
+            if opponent_has_piece:
+                break
+        if not opponent_has_piece:
+            self.game_over = True
+            self.winner = self.current_player
+            return True
+        self.switch_player()
+        return True
 
-        # Just to show something on screen:
-        # place a few fake animals
-        self.board[2][3] = "L"   # Lion
-        self.board[6][1] = "R"   # Rat
-        self.board[0][3] = "D"   # Den (example)
+    def switch_player(self):
+        self.current_player *= -1
 
-    @classmethod
-    def new_game(cls) -> "GameState":
-        """Factory method – real model can also use this name."""
-        return cls()
+    def is_game_over(self):
+        return self.game_over
 
-    def __str__(self) -> str:
-        """
-        Simple text representation of the board for now.
-        GUI will display this.
-        """
-        lines = []
-        header = "   " + " ".join(str(c) for c in range(self.cols))
-        lines.append(header)
-        for r in range(self.rows):
-            row_str = f"{r}  " + " ".join(self.board[r])
-            lines.append(row_str)
-        return "\n".join(lines)
+    def get_winner(self):
+        return self.winner
+
+    def can_undo(self, player):
+        if self.game_over:
+            return False
+
+        if not self.move_history:
+            return False
+
+            # Check who made the last move
+        _, _, _, last_move_player = self.move_history[-1]
+
+        if last_move_player != player:
+            return False
+
+        if self.undo_used[player] >= 3:
+            return False
+
+        return True
+
+    def undo_last_move(self):
+        if not self.move_history:
+            return False  # nothing to undo
+
+            # Extract last recorded move
+        from_pos, to_pos, captured_piece, player = self.move_history.pop()
+
+        # We will undo the move made by 'player'
+        moved_piece = self.board.get_piece(to_pos)
+
+        if moved_piece is None:
+            # Should never happen if code is correct
+            return False
+
+        # 1. Move the piece back to original square
+        self.board.pieces[to_pos.row][to_pos.col] = None
+        self.board.pieces[from_pos.row][from_pos.col] = moved_piece
+        moved_piece.position = from_pos
+
+        # 2. Restore captured piece (if any)
+        if captured_piece is not None:
+            self.board.pieces[to_pos.row][to_pos.col] = captured_piece
+            captured_piece.alive = True
+            captured_piece.position = to_pos
+
+        # 3. Switch current player BACK to the one who made the undone move
+        self.current_player = player
+
+        # 4. Mark undo used
+        self.undo_used[player] += 1
+
+        # 5. If the game was previously over, undo resets it
+        self.game_over = False
+        self.winner = None
+
+        return True
+
+    def get_legal_moves(self, player):
+        moves = []
+
+        # Directions for orthogonal movement
+        DIRECTIONS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+        for row in range(9):
+            for col in range(7):
+                piece = self.board.pieces[row][col]
+
+                if piece is None:
+                    continue
+                if piece.player != player:
+                    continue
+
+                from_pos = piece.position
+
+                # try all 4 directions
+                for dr, dc in DIRECTIONS:
+                    to_row = row + dr
+                    to_col = col + dc
+                    target_pos = Position(to_row, to_col)
+
+                    if not self.board.is_inside(target_pos):
+                        continue
+
+                    if self.board.is_legal_move(piece, target_pos, player):
+                        moves.append((from_pos, target_pos))
+
+                # also try possible jump directions (lion/tiger)
+                # Jumps are far, but is_legal_move handles legality.
+                # So test squares in same row/col.
+                if piece.animal_type.can_jump_river():
+                    # same row, different columns
+                    for col2 in range(7):
+                        if col2 == col:
+                            continue
+                        target_pos = Position(row, col2)
+                        if self.board.is_legal_move(piece, target_pos, player):
+                            moves.append((from_pos, target_pos))
+
+                    # same column, different rows
+                    for row2 in range(9):
+                        if row2 == row:
+                            continue
+                        target_pos = Position(row2, col)
+                        if self.board.is_legal_move(piece, target_pos, player):
+                            moves.append((from_pos, target_pos))
+
+        return moves
+    def get_current_player(self):
+        return self.current_player
+
+
+
+
+
+
+
+

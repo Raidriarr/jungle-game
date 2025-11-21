@@ -163,15 +163,7 @@ class GameState:
                         target_pos = Position(row2, col)
                         if self.board.is_legal_move(piece, target_pos, player):
                             moves.append((from_pos, target_pos))
-
         return moves
+    
     def get_current_player(self):
         return self.current_player
-
-
-
-
-
-
-
-

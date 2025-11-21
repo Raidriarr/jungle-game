@@ -253,6 +253,6 @@ class Board:
             return False
 
         return True
-
-
-
+    
+    def get_size(self):
+        return len(self.tiles), len(self.tiles[0])

@@ -97,6 +97,8 @@ class JungleGameApp (tk.Tk):
 
     #Event Handler
     def on_cell_click(self, row, col):
+        if self.controller.is_game_over():
+            return
         if self.selected_cell is None:
             if self.controller.can_select_piece(row, col):
                 self.selected_cell = (row, col)

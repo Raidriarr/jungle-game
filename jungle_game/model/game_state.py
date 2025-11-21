@@ -168,7 +168,97 @@ class GameState:
     def get_current_player(self):
         return self.current_player
 
+    # -----------------------------
+    # SERIALIZATION (MODEL ONLY)
+    # -----------------------------
+    def to_dict(self):
+        """
+        Convert the whole game state into a serializable dictionary.
+        This is ONLY the data structure — not file I/O.
+        Yera will use this to save .jungle files.
+        """
 
+        pieces_data = []
+
+        for row in range(9):
+            row_data = []
+            for col in range(7):
+                piece = self.board.pieces[row][col]
+                if piece is None:
+                    row_data.append(None)
+                else:
+                    row_data.append({
+                        "type": piece.animal_type.name,
+                        "player": piece.player
+                    })
+            pieces_data.append(row_data)
+
+        return {
+            "current_player": self.current_player,
+            "undo_used": {
+                "1": self.undo_used[1],
+                "-1": self.undo_used[-1]
+            },
+            "pieces": pieces_data
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """
+        Reconstruct a GameState from a dictionary created by to_dict().
+        This does NOT include file I/O — only the logic.
+        """
+
+        state = cls()  # create a fresh game
+
+        state.current_player = data["current_player"]
+        state.undo_used = {
+            1: data["undo_used"]["1"],
+            -1: data["undo_used"]["-1"]
+        }
+
+        # rebuild board pieces
+        pieces_data = data["pieces"]
+
+        for row in range(9):
+            for col in range(7):
+                entry = pieces_data[row][col]
+
+                if entry is None:
+                    state.board.pieces[row][col] = None
+                    continue
+
+                # recreate the piece
+                piece_type = entry["type"]
+                player = entry["player"]
+
+                # find correct AnimalType instance
+                from .animal_type import (
+                    ELEPHANT, LION, TIGER, LEOPARD,
+                    WOLF, DOG, CAT, RAT
+                )
+                type_map = {
+                    "Elephant": ELEPHANT,
+                    "Lion": LION,
+                    "Tiger": TIGER,
+                    "Leopard": LEOPARD,
+                    "Wolf": WOLF,
+                    "Dog": DOG,
+                    "Cat": CAT,
+                    "Rat": RAT
+                }
+
+                animal_type = type_map[piece_type]
+
+                from .position import Position
+                from .piece import Piece
+
+                pos = Position(row, col)
+                piece_obj = Piece(animal_type, player, pos)
+
+                state.board.pieces[row][col] = piece_obj
+
+        return state
 
 
 

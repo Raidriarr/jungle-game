@@ -23,13 +23,7 @@ class GameController:
         return self.game_state.make_move(from_pos, to_pos)
 
     def undo(self):
-        """
-        Undo the *last actual move* made in the game.
-        This is the correct behaviour for Jungle and for your GameState.
 
-        A player should always be able to undo *their own last move*,
-        regardless of whose turn it currently is.
-        """
         # No moves made → nothing to undo
         if not self.game_state.move_history:
             return False

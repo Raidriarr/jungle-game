@@ -231,8 +231,6 @@ class Board:
         c = from_pos.col + step_c
 
         # Must jump OVER the river:
-        # All intermediate squares must be river squares,
-        # AND none may contain a rat.
         while (r != to_pos.row) or (c != to_pos.col):
             intermediate = Position(r, c)
 

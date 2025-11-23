@@ -92,24 +92,19 @@ class GameState:
             # Should never happen if code is correct
             return False
 
-        # 1. Move the piece back to original square
         self.board.pieces[to_pos.row][to_pos.col] = None
         self.board.pieces[from_pos.row][from_pos.col] = moved_piece
         moved_piece.position = from_pos
 
-        # 2. Restore captured piece (if any)
         if captured_piece is not None:
             self.board.pieces[to_pos.row][to_pos.col] = captured_piece
             captured_piece.alive = True
             captured_piece.position = to_pos
 
-        # 3. Switch current player BACK to the one who made the undone move
         self.current_player = player
 
-        # 4. Mark undo used
         self.undo_used[player] += 1
 
-        # 5. If the game was previously over, undo resets it
         self.game_over = False
         self.winner = None
 
@@ -144,11 +139,7 @@ class GameState:
                     if self.board.is_legal_move(piece, target_pos, player):
                         moves.append((from_pos, target_pos))
 
-                # also try possible jump directions (lion/tiger)
-                # Jumps are far, but is_legal_move handles legality.
-                # So test squares in same row/col.
                 if piece.animal_type.can_jump_river():
-                    # same row, different columns
                     for col2 in range(7):
                         if col2 == col:
                             continue
@@ -156,7 +147,6 @@ class GameState:
                         if self.board.is_legal_move(piece, target_pos, player):
                             moves.append((from_pos, target_pos))
 
-                    # same column, different rows
                     for row2 in range(9):
                         if row2 == row:
                             continue

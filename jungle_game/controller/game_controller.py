@@ -1,6 +1,5 @@
 from jungle_game.model.game_state import GameState
 from jungle_game.model.position import Position
-import time
 
 
 class GameController:

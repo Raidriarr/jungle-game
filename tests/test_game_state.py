@@ -5,7 +5,7 @@ import tempfile
 from jungle_game.model.game_state import GameState
 from jungle_game.model.position import Position
 from jungle_game.model.piece import Piece
-from jungle_game.model.animal_type import RAT, LION, TIGER
+from jungle_game.model.animal_type import RAT, LION
 
 
 def make_empty_state():

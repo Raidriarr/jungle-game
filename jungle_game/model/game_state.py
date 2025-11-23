@@ -177,10 +177,13 @@ class GameState:
     #Save into .record format
     def save_record(self, filename):
         with open(filename, "w") as f:
+            f.write("row_from column_from row_to column_to Captured_piece Player_move\n")
             for fr, to, cap, pl in self.move_history:
                 r1, c1 = fr.get_pos()
                 r2, c2 = to.get_pos()
-                f.write(f"{r1} {c1} {r2} {c2}\n")
+                captured = 0 if cap is None else 1
+                pl = 1 if pl == 1 else 2
+                f.write(f"{r1} {c1} {r2} {c2} {captured} {pl}\n")
 
     def to_dict(self):
         pieces_data = []
@@ -268,8 +271,12 @@ class GameState:
     def replay_history(cls, filename):  
         moves = []
         with open(filename, "r") as f:
+            first = True
             for line in f:
-                r1, c1, r2, c2 = map(int, line.strip().split())
+                if first:
+                    first = False   # skip header row
+                    continue
+                r1, c1, r2, c2, captured, pl = map(int, line.split())
                 moves.append((r1, c1, r2, c2))
         return moves
         

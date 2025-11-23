@@ -81,8 +81,17 @@ class GameController:
         self.game_state = GameState.load_game(filename)
 
     def replay_game(self, filename):
-        self.game_state = GameState()
+        self.reset_game()
         return GameState.replay_history(filename)
+    
+    def apply_move_tuple(self, move):
+        r1, c1, r2, c2 = move
+        from_pos = Position(r1, c1)
+        to_pos = Position(r2, c2)
+        self.game_state.make_move(from_pos, to_pos)
+
+    def reset_game(self):
+        self.game_state = GameState()
 
 
     #Game State Info

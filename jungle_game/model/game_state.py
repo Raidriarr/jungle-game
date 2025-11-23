@@ -201,6 +201,7 @@ class GameState:
         }
 
     # Load from .jungle format
+    @classmethod
     def load_game(cls, filename):
         with open(filename, 'r') as f:
             data = json.load(f)

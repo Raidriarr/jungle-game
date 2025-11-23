@@ -1,4 +1,6 @@
 import unittest
+import os
+import tempfile
 
 from jungle_game.model.game_state import GameState
 from jungle_game.model.position import Position
@@ -399,6 +401,114 @@ class TestGameState(unittest.TestCase):
                     self.assertEqual(p2.position.row, r)
                     self.assertEqual(p2.position.col, c)
 
+    # ------------------------------------------------------------------
+    # File I/O: save_record + replay_history
+    # ------------------------------------------------------------------
+    def test_save_record_and_replay_history_roundtrip(self):
+        gs = make_empty_state()
+
+        # Build a simple move history using helper state
+        from1 = Position(6, 4)
+        to1   = Position(6, 3)
+        p1    = Piece(RAT, 1, from1)
+
+        from2 = Position(2, 4)
+        to2   = Position(2, 3)
+        p2    = Piece(RAT, -1, from2)
+
+        captured_piece = Piece(RAT, 1, to2)  # captured by P2
+
+        gs.move_history = [
+            (from1, to1, None, 1),                 # no capture
+            (from2, to2, captured_piece, -1),      # capture
+        ]
+
+        # Create temporary record file
+        import tempfile, os
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".record") as tmp:
+            tmp_name = tmp.name
+
+        try:
+            # Save record
+            gs.save_record(tmp_name)
+
+            # Read file to check content
+            with open(tmp_name, "r") as f:
+                lines = [l.strip() for l in f.readlines() if l.strip()]
+
+            # Header
+            self.assertEqual(
+                lines[0],
+                "row_from column_from row_to column_to Captured_piece Player_move"
+            )
+
+            # First move
+            self.assertEqual(lines[1].split(), ["6", "4", "6", "3", "0", "1"])
+            # Second move
+            self.assertEqual(lines[2].split(), ["2", "4", "2", "3", "1", "2"])
+
+            # Replaying should return only (r1,c1,r2,c2)
+            replay_moves = GameState.replay_history(tmp_name)
+            self.assertEqual(
+                replay_moves,
+                [(6, 4, 6, 3), (2, 4, 2, 3)]
+            )
+        finally:
+            os.remove(tmp_name)
+
+
+    # ------------------------------------------------------------------
+    # File I/O: save_game + load_game (.jungle)
+    # ------------------------------------------------------------------
+    def test_save_and_load_game_roundtrip_file(self):
+        gs = GameState()
+
+        # Tweak some metadata
+        gs.current_player = -1
+        gs.undo_used[1] = 2
+        gs.undo_used[-1] = 1
+
+        # Move one piece to make layout non-trivial
+        orig_pos = Position(8, 0)
+        new_pos  = Position(7, 0)
+        piece = gs.board.get_piece(orig_pos)
+        if piece is not None:
+            gs.board.pieces[orig_pos.row][orig_pos.col] = None
+            gs.board.pieces[new_pos.row][new_pos.col] = piece
+            piece.position = new_pos
+
+        # Save to a temp .jungle file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jungle") as tmp:
+            tmp_name = tmp.name
+
+        try:
+            gs.save_game(tmp_name)
+
+            # Load with classmethod
+            gs2 = GameState.load_game(tmp_name)
+
+            # Meta info should match
+            self.assertEqual(gs2.current_player, -1)
+            self.assertEqual(gs2.undo_used[1], 2)
+            self.assertEqual(gs2.undo_used[-1], 1)
+
+            # Board layout should match
+            for r in range(9):
+                for c in range(7):
+                    p1 = gs.board.pieces[r][c]
+                    p2 = gs2.board.pieces[r][c]
+
+                    if p1 is None:
+                        self.assertIsNone(p2)
+                    else:
+                        self.assertIsNotNone(p2)
+                        self.assertEqual(p1.animal_type.name, p2.animal_type.name)
+                        self.assertEqual(p1.player, p2.player)
+                        self.assertEqual(p2.position.row, r)
+                        self.assertEqual(p2.position.col, c)
+
+        finally:
+            os.remove(tmp_name)
 
 if __name__ == "__main__":
     unittest.main()

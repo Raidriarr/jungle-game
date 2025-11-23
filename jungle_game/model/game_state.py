@@ -201,12 +201,14 @@ class GameState:
         }
 
     # Load from .jungle format
-    @classmethod
     def load_game(cls, filename):
-        state = cls()  # create a fresh game
-
         with open(filename, 'r') as f:
             data = json.load(f)
+        return cls.from_dict(data)
+    
+    @classmethod
+    def from_dict(cls, data):
+        state = cls()  # create a fresh game
 
         state.current_player = data["current_player"]
         state.undo_used = {

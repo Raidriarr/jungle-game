@@ -2,7 +2,6 @@ import unittest
 
 from jungle_game.model.position import Position
 
-
 class TestPosition(unittest.TestCase):
     def test_adjacent_horizontal(self):
         p1 = Position(3, 3)
@@ -23,6 +22,10 @@ class TestPosition(unittest.TestCase):
         p1 = Position(0, 0)
         p2 = Position(2, 0)
         self.assertFalse(p1.is_adjacent(p2))
+
+    def test_get_position(self):
+        p = Position(5, 7)
+        self.assertEqual(p.get_pos(), (5, 7))
 
 
 if __name__ == "__main__":

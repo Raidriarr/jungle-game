@@ -1,5 +1,3 @@
-# main.py  (put this in the project root, next to jungle_game/)
-
 from jungle_game.view.gui import JungleGameApp
 
 

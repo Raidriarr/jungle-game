@@ -1,0 +1,9 @@
+Name                               Stmts   Miss  Cover
+------------------------------------------------------
+jungle_game/model/animal_type.py      16      0   100%
+jungle_game/model/board.py           149     40    73%
+jungle_game/model/game_state.py      185      4    98%
+jungle_game/model/piece.py            11      0   100%
+jungle_game/model/position.py         10      0   100%
+------------------------------------------------------
+TOTAL                                371     44    88%
